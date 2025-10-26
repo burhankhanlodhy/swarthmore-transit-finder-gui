@@ -1,0 +1,6 @@
+flask==3.0.0
+requests==2.31.0
+pandas==2.1.4
+lxml==5.1.0
+html5lib==1.1
+astropy>=5.3.0

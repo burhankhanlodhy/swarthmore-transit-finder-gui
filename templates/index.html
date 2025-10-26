@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swarthmore Transit Finder Query Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .form-container {
+            padding: 40px;
+        }
+        
+        .form-section {
+            margin-bottom: 30px;
+        }
+        
+        .form-section h2 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        label {
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        input, select {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .help-text {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .pick-best-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 15px;
+        }
+        
+        .pick-best-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(245, 87, 108, 0.4);
+        }
+        
+        .pick-best-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .best-result-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(245, 87, 108, 0.3);
+            display: none;
+        }
+        
+        .best-result-card.active {
+            display: block;
+            animation: slideIn 0.4s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .best-result-card h3 {
+            margin: 0 0 15px 0;
+            font-size: 22px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .best-result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .best-result-item {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 12px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .best-result-item label {
+            font-size: 12px;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .best-result-item .value {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .highlight-row {
+            background: #fff3cd !important;
+            border-left: 4px solid #f5576c !important;
+            animation: pulse 1.5s ease-in-out 3;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .results {
+            margin-top: 30px;
+            display: none;
+        }
+        
+        .results.active {
+            display: block;
+        }
+        
+        .results-header {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        
+        .results-count {
+            font-weight: 600;
+            color: #667eea;
+            font-size: 16px;
+        }
+        
+        .results-table {
+            width: 100%;
+            overflow-x: auto;
+            margin-top: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            background: white;
+        }
+        
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 14px 10px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            white-space: nowrap;
+            border-right: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        th:last-child {
+            border-right: none;
+        }
+        
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #e8e8e8;
+            border-right: 1px solid #f0f0f0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 200px;
+        }
+        
+        td:last-child {
+            border-right: none;
+        }
+        
+        tr:nth-child(even) {
+            background: #f9f9fb;
+        }
+        
+        tr:hover {
+            background: #e7f3ff;
+            cursor: pointer;
+        }
+        
+        /* Make target name column bold */
+        td:first-child {
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        /* Scrollable table container */
+        .results-table-wrapper {
+            max-height: 600px;
+            overflow-y: auto;
+            border-radius: 8px;
+        }
+        
+        .error {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .error.active {
+            display: block;
+        }
+        
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .info-box strong {
+            color: #1976D2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌟 Swarthmore Transit Finder Query Tool</h1>
+            <p>Find observable exoplanet transits based on your observing parameters</p>
+        </div>
+        
+        <div class="form-container">
+            <div class="info-box">
+                <strong>Note:</strong> This tool queries the Swarthmore Exoplanet Transit Database. 
+                Fill in your observing location, time window, and constraints to find suitable targets.
+            </div>
+            
+            <form id="queryForm">
+                <div class="form-section">
+                    <h2>📍 Observing Location</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Observatory</label>
+                            <div style="padding: 12px; background: #e7f3ff; border: 2px solid #667eea; border-radius: 6px; font-weight: 600; color: #1976D2;">
+                                🏛️ Rockwood Observatory, TX (31.55°N, 99.38°W)
+                            </div>
+                            <span class="help-text">Location is locked to Rockwood Observatory</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h2>🎯 Target Constraints (Optional)</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="ra">Right Ascension (RA)</label>
+                            <input type="text" id="ra" name="ra" placeholder="e.g., 12:34:56">
+                            <span class="help-text">Format: HH:MM:SS</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="dec">Declination (Dec)</label>
+                            <input type="text" id="dec" name="dec" placeholder="e.g., +12:34:56">
+                            <span class="help-text">Format: ±DD:MM:SS</span>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="target_name">Target Name (Optional)</label>
+                            <input type="text" id="target_name" name="target_name" placeholder="e.g., WASP-12">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h2>🕒 Time Parameters</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="timezone">Time Zone</label>
+                            <select id="timezone" name="timezone">
+                                <option value="America/New_York">Eastern Time</option>
+                                <option value="America/Chicago">Central Time</option>
+                                <option value="America/Denver">Mountain Time</option>
+                                <option value="America/Los_Angeles">Pacific Time</option>
+                                <option value="America/Phoenix">Arizona Time</option>
+                                <option value="America/Anchorage">Alaska Time</option>
+                                <option value="Pacific/Honolulu">Hawaii Time</option>
+                                <option value="UTC">UTC</option>
+                                <option value="Europe/London">London</option>
+                                <option value="Europe/Paris">Paris</option>
+                                <option value="Asia/Tokyo">Tokyo</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="date">Start Date</label>
+                            <input type="date" id="date" name="date" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="days_forward">Days Forward</label>
+                            <input type="number" id="days_forward" name="days_forward" value="3" min="0" max="30" step="1">
+                            <span class="help-text">Show transits for next N days</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="days_back">Days Backward</label>
+                            <input type="number" id="days_back" name="days_back" value="0" min="0" max="7" step="1">
+                            <span class="help-text">Also include previous N days</span>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="baseline_hrs">Baseline Hours</label>
+                            <input type="number" id="baseline_hrs" name="baseline_hrs" value="1" min="0.5" max="5" step="0.5">
+                            <span class="help-text">Hours before/after transit for baseline</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h2>⚙️ Observing Constraints</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="mag_max">Maximum Magnitude</label>
+                            <input type="number" id="mag_max" name="mag_max" step="0.1" placeholder="e.g., 14.5">
+                            <span class="help-text">Faintest target to include</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="depth_min">Minimum Transit Depth (%)</label>
+                            <input type="number" id="depth_min" name="depth_min" step="0.1" placeholder="e.g., 0.5">
+                            <span class="help-text">Smallest transit depth to include</span>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="min_elevation">Minimum Elevation (degrees)</label>
+                            <input type="number" id="min_elevation" name="min_elevation" value="30" step="1">
+                            <span class="help-text">Minimum altitude above horizon</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    🔍 Find Transits
+                </button>
+            </form>
+            
+            <button class="pick-best-btn" id="pickBestBtn" disabled>
+                ⭐ Pick Best Transit
+            </button>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Querying Swarthmore Transit Finder...</p>
+            </div>
+            
+            <div class="error" id="error"></div>
+            
+            <div class="best-result-card" id="bestResultCard">
+                <h3>⭐ Best Transit Candidate</h3>
+                <div class="best-result-grid" id="bestResultGrid"></div>
+            </div>
+            
+            <div class="results" id="results">
+                <div class="results-header">
+                    <div class="results-count" id="resultsCount"></div>
+                </div>
+                <div class="results-table-wrapper">
+                    <div class="results-table">
+                        <table id="resultsTable">
+                            <thead id="tableHeader"></thead>
+                            <tbody id="tableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Global variable to store results
+        let currentResults = null;
+        
+        // Set today's date as default
+        document.getElementById('date').valueAsDate = new Date();
+        
+        // Toggle between preset observatory and manual entry
+        function toggleLocationInput() {
+            const locationType = document.getElementById('location_type').value;
+            const observatoryGroup = document.getElementById('observatory_select_group');
+            const manualGroup = document.getElementById('manual_location_group');
+            
+            if (locationType === 'observatory') {
+                observatoryGroup.style.display = 'flex';
+                manualGroup.style.display = 'none';
+            } else {
+                observatoryGroup.style.display = 'none';
+                manualGroup.style.display = 'flex';
+            }
+        }
+        
+        document.getElementById('queryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const pickBestBtn = document.getElementById('pickBestBtn');
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+            const error = document.getElementById('error');
+            const bestResultCard = document.getElementById('bestResultCard');
+            
+            // Reset UI
+            submitBtn.disabled = true;
+            pickBestBtn.disabled = true;
+            loading.classList.add('active');
+            results.classList.remove('active');
+            error.classList.remove('active');
+            bestResultCard.classList.remove('active');
+            
+            // Collect form data
+            const formData = new FormData(e.target);
+            
+            // Handle location input based on type
+            const locationType = formData.get('location_type');
+            if (locationType === 'manual') {
+                // Use manual entry, replace 'location' with 'location_manual'
+                formData.set('location', formData.get('location_manual'));
+            }
+            
+            try {
+                const response = await fetch('/query', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || 'Query failed');
+                }
+                
+                // Store results globally
+                currentResults = data.results;
+                
+                // Display results
+                displayResults(data.results, data.count);
+                
+                // Enable Pick Best button
+                pickBestBtn.disabled = false;
+                
+            } catch (err) {
+                error.textContent = '❌ ' + err.message;
+                error.classList.add('active');
+            } finally {
+                submitBtn.disabled = false;
+                loading.classList.remove('active');
+            }
+        });
+        
+        // Pick Best Transit button handler
+        document.getElementById('pickBestBtn').addEventListener('click', () => {
+            if (!currentResults || currentResults.length === 0) {
+                return;
+            }
+            
+            const bestTransit = findBestTransit(currentResults);
+            
+            if (bestTransit) {
+                displayBestTransit(bestTransit);
+                highlightBestInTable(bestTransit);
+            } else {
+                const error = document.getElementById('error');
+                error.textContent = '⚠️ No transit found with 100% visibility. Try adjusting your filters.';
+                error.classList.add('active');
+                setTimeout(() => error.classList.remove('active'), 5000);
+            }
+        });
+        
+        function findBestTransit(results) {
+            // Filter for 100% visible transits
+            const fullTransits = results.filter(row => {
+                // Look for percentage indicators - could be in various columns
+                const rowStr = JSON.stringify(row).toLowerCase();
+                // Check if contains "100%" and not partial like "82%"
+                return rowStr.includes('100%') || rowStr.includes('100 %');
+            });
+            
+            if (fullTransits.length === 0) {
+                return null;
+            }
+            
+            // Find columns for magnitude and depth
+            const magColumns = Object.keys(results[0]).filter(k => 
+                k.toLowerCase().includes('mag') && !k.toLowerCase().includes('maximum')
+            );
+            const depthColumns = Object.keys(results[0]).filter(k => 
+                k.toLowerCase().includes('depth')
+            );
+            
+            // Score and rank transits
+            let bestTransit = fullTransits[0];
+            let bestScore = -Infinity;
+            
+            fullTransits.forEach(transit => {
+                let score = 0;
+                
+                // Lower magnitude is better (brighter star)
+                magColumns.forEach(col => {
+                    const mag = parseFloat(transit[col]);
+                    if (!isNaN(mag)) {
+                        score -= mag; // Subtract magnitude (lower is better)
+                    }
+                });
+                
+                // Higher depth is better (more detectable)
+                depthColumns.forEach(col => {
+                    const depthStr = String(transit[col]);
+                    const depth = parseFloat(depthStr.replace('%', ''));
+                    if (!isNaN(depth)) {
+                        score += depth * 10; // Add depth * 10 to give it more weight
+                    }
+                });
+                
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestTransit = transit;
+                }
+            });
+            
+            return bestTransit;
+        }
+        
+        function displayBestTransit(transit) {
+            const bestResultCard = document.getElementById('bestResultCard');
+            const bestResultGrid = document.getElementById('bestResultGrid');
+            
+            // Extract key information - prioritize certain fields
+            const keys = Object.keys(transit);
+            
+            // Define priority fields to show first
+            const priorityFields = [
+                'Name',
+                'RA (JNow)',
+                'Dec (JNow)',
+                'Transit Visibility',
+                'Observation Start',
+                'Observation End',
+                'Baseline Start',
+                'Transit Ingress',
+                'Mid-Transit',
+                'Transit Egress',
+                'Baseline End',
+                'V or Gaia mag',
+                'Depth (ppt)',
+                'Duration',
+                'Elev @ Baseline Start',
+                'Elev @ Ingress',
+                'Elev @ Mid-Transit',
+                'Elev @ Egress',
+                'Elev @ Baseline End',
+            ];
+            
+            // Get important keys, excluding J2000 if JNow exists
+            const hasJNow = keys.some(k => k.includes('JNow'));
+            const importantKeys = keys.filter(k => {
+                const val = transit[k];
+                // Skip null/empty values
+                if (val === null || val === undefined || val === '') return false;
+                
+                // Exclude J2000 coordinates if we have JNow
+                if (hasJNow && k.toLowerCase().includes('j2000')) {
+                    return false;
+                }
+                
+                // For Best Transit display: Exclude original combined format columns (show parsed versions instead)
+                // But these will still appear in the main results table
+                if (k.toLowerCase().includes('start') && k.toLowerCase().includes('mid') && k.toLowerCase().includes('end') && k.includes('—')) {
+                    return false;
+                }
+                if (k.toLowerCase().includes('% of transit') && k.toLowerCase().includes('observable')) {
+                    return false;
+                }
+                if (k.toLowerCase().includes('elev.') && k.toLowerCase().includes('±') && k.toLowerCase().includes('hrs')) {
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            // Sort keys: priority fields first, then others
+            const sortedKeys = [
+                ...priorityFields.filter(pf => importantKeys.includes(pf)),
+                ...importantKeys.filter(k => !priorityFields.includes(k))
+            ];
+            
+            // Build display
+            let html = '';
+            sortedKeys.slice(0, 20).forEach(key => {
+                const value = transit[key];
+                if (value !== null && value !== undefined && value !== '') {
+                    // Format the label to be more readable
+                    let displayLabel = key;
+                    if (key === 'RA (JNow)') displayLabel = '🌐 RA (JNow - Current Epoch)';
+                    if (key === 'Dec (JNow)') displayLabel = '🌐 Dec (JNow - Current Epoch)';
+                    if (key === 'Transit Visibility') displayLabel = '👁️ Transit Visibility';
+                    if (key === 'Observation Start') displayLabel = '🕐 Observation Window Start';
+                    if (key === 'Observation End') displayLabel = '🕐 Observation Window End';
+                    if (key === 'Baseline Start') displayLabel = '⏰ Baseline Start (1hr before)';
+                    if (key === 'Transit Ingress') displayLabel = '🌑 Transit Start (Ingress)';
+                    if (key === 'Mid-Transit') displayLabel = '🎯 Mid-Transit (Deepest)';
+                    if (key === 'Transit Egress') displayLabel = '🌑 Transit End (Egress)';
+                    if (key === 'Baseline End') displayLabel = '⏰ Baseline End (1hr after)';
+                    if (key === 'V or Gaia mag') displayLabel = '⭐ Magnitude';
+                    if (key === 'Depth (ppt)') displayLabel = '📊 Transit Depth (ppt)';
+                    if (key === 'Duration') displayLabel = '⏱️ Transit Duration';
+                    if (key.includes('Elev @')) displayLabel = '📐 ' + key;
+                    
+                    html += `
+                        <div class="best-result-item">
+                            <label>${displayLabel}</label>
+                            <div class="value">${value}</div>
+                        </div>
+                    `;
+                }
+            });
+            
+            // Add a note about coordinates
+            if (hasJNow) {
+                html += `
+                    <div class="best-result-item" style="grid-column: 1 / -1; background: rgba(255,255,255,0.3); border-left: 3px solid white;">
+                        <label style="font-size: 11px;">📌 OBSERVING NOTES</label>
+                        <div class="value" style="font-size: 13px;">
+                            • Use JNow coordinates for telescope pointing tonight<br>
+                            • Start observations at Baseline Start time<br>
+                            • Transit occurs from Ingress to Egress<br>
+                            • End observations at Baseline End time<br>
+                            • Total observing time includes 1 hour baseline before and after transit
+                        </div>
+                    </div>
+                `;
+            }
+            
+            bestResultGrid.innerHTML = html;
+            bestResultCard.classList.add('active');
+            
+            // Scroll to the card
+            bestResultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        
+        function highlightBestInTable(bestTransit) {
+            // Remove previous highlights
+            document.querySelectorAll('.highlight-row').forEach(row => {
+                row.classList.remove('highlight-row');
+            });
+            
+            // Find and highlight the matching row
+            const tableBody = document.getElementById('tableBody');
+            const rows = tableBody.querySelectorAll('tr');
+            
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                const rowData = Array.from(cells).map(cell => cell.textContent);
+                
+                // Check if this row matches the best transit
+                const firstCell = rowData[0];
+                const bestFirstValue = String(Object.values(bestTransit)[0]);
+                
+                if (firstCell === bestFirstValue || rowData.join('').includes(bestFirstValue)) {
+                    row.classList.add('highlight-row');
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+        }
+        
+        function displayResults(data, count) {
+            const resultsCount = document.getElementById('resultsCount');
+            const tableHeader = document.getElementById('tableHeader');
+            const tableBody = document.getElementById('tableBody');
+            const results = document.getElementById('results');
+            
+            resultsCount.textContent = `Found ${count} transit event${count !== 1 ? 's' : ''}`;
+            
+            if (count === 0 || !data || data.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="100" style="text-align:center; padding: 40px;">No transit events found for the specified criteria.</td></tr>';
+                tableHeader.innerHTML = '';
+                results.classList.add('active');
+                return;
+            }
+            
+            // Build table header with cleaner column names
+            const headers = Object.keys(data[0]);
+            tableHeader.innerHTML = '<tr>' + headers.map(h => `<th title="${h}">${formatHeaderName(h)}</th>`).join('') + '</tr>';
+            
+            // Build table body with formatted values
+            tableBody.innerHTML = data.map(row => {
+                return '<tr>' + headers.map(h => `<td title="${row[h] || ''}">${formatCellValue(h, row[h])}</td>`).join('') + '</tr>';
+            }).join('');
+            
+            results.classList.add('active');
+        }
+        
+        function formatHeaderName(header) {
+            // Shorten common header names for better display
+            const shortNames = {
+                'Planet Name': 'Target',
+                'Target Name': 'Target',
+                'Transit Start': 'Start',
+                'Transit Mid': 'Mid-Transit',
+                'Transit End': 'End',
+                'V Magnitude': 'V Mag',
+                'Transit Depth': 'Depth',
+                'Elevation': 'Elev',
+                'Maximum Elevation': 'Max Elev',
+                'Minimum Elevation': 'Min Elev'
+            };
+            return shortNames[header] || header;
+        }
+        
+        function formatCellValue(header, value) {
+            if (value === null || value === undefined || value === '') return '-';
+            
+            // Format numbers with appropriate precision
+            if (typeof value === 'number') {
+                if (header.toLowerCase().includes('mag')) {
+                    return value.toFixed(2);
+                } else if (header.toLowerCase().includes('depth')) {
+                    return value.toFixed(3) + '%';
+                } else if (header.toLowerCase().includes('elev')) {
+                    return value.toFixed(1) + '°';
+                } else {
+                    return value.toFixed(2);
+                }
+            }
+            
+            // Truncate long strings
+            const str = String(value);
+            if (str.length > 50) {
+                return str.substring(0, 47) + '...';
+            }
+            
+            return str;
+        }
+    </script>
+</body>
+</html>
